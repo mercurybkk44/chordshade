@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "ChordShade",
+  "version": "1.0.0",
+  "description": "ChordShade: Subtle and powerful chord overlay for guitarists on YouTube.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  }
+}
