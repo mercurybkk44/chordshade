@@ -23,20 +23,6 @@ To use ChordShade locally in Chrome:
 
 💡 Tip: Open any YouTube video, then click the icon to overlay your chord image!
 
-## 📁 Project Structure
-chordshade/
-├── manifest.json
-├── src/
-│ ├── content.js
-│ ├── popup.html
-│ └── popup.js
-├── assets/icons/
-│ ├── icon16.png
-│ ├── icon48.png
-│ └── icon128.png
-├── README.md
-└── LICENSE
-
 
 ## 📄 License & Usage Terms
 
