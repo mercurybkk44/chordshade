@@ -1,9 +1,16 @@
 {
   "manifest_version": 3,
   "name": "ChordShade",
-  "version": "1.0.0",
-  "description": "ChordShade: Subtle and powerful chord overlay for guitarists on YouTube.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "version": "2.0.0",
+  "description": "ChordShade: Auto-detect chords from YouTube and sync overlay for guitarists.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": [
+    "https://www.songsterr.com/*",
+    "https://cdn.songsterr.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": {
