@@ -3,18 +3,149 @@
 <head>
   <title>ChordShade</title>
   <style>
-    body { font-family: sans-serif; padding: 10px; width: 300px; }
-    input, button, label { width: 100%; margin-top: 8px; padding: 8px; box-sizing: border-box; }
-    label { font-size: 14px; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, sans-serif;
+      padding: 14px;
+      width: 300px;
+      background: #111827;
+      color: #f3f4f6;
+    }
+    h3 {
+      font-size: 15px;
+      margin-bottom: 12px;
+      color: #f9fafb;
+      letter-spacing: 0.3px;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 14px;
+      background: #1f2937;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .tab {
+      flex: 1;
+      padding: 6px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .tab.active { background: #e94560; color: white; }
+    .tab:not(.active) { background: transparent; color: #6b7280; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Auto panel */
+    .detect-box {
+      background: #1f2937;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .detect-label { color: #6b7280; font-size: 11px; margin-bottom: 3px; }
+    .detect-title { color: #f3f4f6; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-box {
+      background: #1f2937;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      display: none;
+    }
+    .result-song { font-size: 14px; font-weight: 600; color: #f9fafb; }
+    .result-artist { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    #status {
+      font-size: 11px;
+      color: #6b7280;
+      min-height: 16px;
+      margin: 6px 0;
+    }
+    #status.found { color: #34d399; }
+    #status.error { color: #f87171; }
+    #status.loading { color: #60a5fa; }
+
+    /* Buttons */
+    button {
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 6px;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.88; }
+    .btn-primary { background: #e94560; color: white; }
+    .btn-secondary { background: #1f2937; color: #9ca3af; }
+    .btn-success { background: #059669; color: white; }
+    .btn-danger { background: #374151; color: #f87171; }
+
+    /* Manual panel */
+    input[type="text"] {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #f3f4f6;
+      font-size: 13px;
+    }
+    input[type="text"]:focus { outline: none; border-color: #e94560; }
+    label { font-size: 12px; color: #6b7280; display: block; margin-top: 10px; margin-bottom: 4px; }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #e94560;
+    }
   </style>
 </head>
 <body>
-  <h3>Set Chord Overlay Image</h3>
-  <input type="text" id="imgUrl" placeholder="Paste image URL here" />
-  <label for="opacity">Opacity:</label>
-  <input type="range" id="opacity" min="0.1" max="1" step="0.05" />
-  <button id="saveBtn">Save & Inject</button>
-  <button id="resetBtn">Reset</button>
+  <h3>🎸 ChordShade</h3>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="auto">Auto-Detect</button>
+    <button class="tab" data-tab="manual">Manual</button>
+  </div>
+
+  <!-- Auto-Detect Panel -->
+  <div class="panel active" id="panel-auto">
+    <div class="detect-box" id="yt-detect" style="display:none">
+      <div class="detect-label">Detected from YouTube</div>
+      <div class="detect-title" id="detected-title"></div>
+    </div>
+    <div class="detect-box" id="no-yt" style="display:none">
+      <div class="detect-label" style="color:#f87171">Open a YouTube video first</div>
+    </div>
+
+    <button class="btn-primary" id="searchBtn">Search Songsterr</button>
+
+    <div id="status"></div>
+
+    <div class="result-box" id="result-box">
+      <div class="result-song" id="result-title"></div>
+      <div class="result-artist" id="result-artist"></div>
+    </div>
+
+    <button class="btn-success" id="syncBtn" style="display:none">▶ Enable Chord Sync</button>
+    <button class="btn-danger" id="stopBtn" style="display:none">■ Stop Sync</button>
+  </div>
+
+  <!-- Manual Panel -->
+  <div class="panel" id="panel-manual">
+    <input type="text" id="imgUrl" placeholder="Paste chord image URL" />
+    <label for="opacity">Opacity</label>
+    <input type="range" id="opacity" min="0.1" max="1" step="0.05" />
+    <button class="btn-primary" id="saveBtn">Save & Overlay</button>
+    <button class="btn-secondary" id="resetBtn" style="margin-top:4px">Reset</button>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
