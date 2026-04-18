@@ -27,62 +27,42 @@ async function getVideoPoints(songId, revisionId) {
   return bgMessage({ type: 'SONGSTERR_VIDEO_POINTS', songId, revisionId });
 }
 
-async function getTabChords(songId, revisionId, tracks, slug) {
-  const result = await bgMessage({ type: 'SONGSTERR_TAB_CHORDS', songId, revisionId, tracks, slug }).catch(() => null);
-  if (!result?.data) return null;
-  return extractChordsFromTab(result.data);
+async function getTrackChords({ songId, revisionId, image, tracks }) {
+  const partId = pickBestGuitarTrack(tracks);
+  const trackData = await bgMessage({
+    type: 'SONGSTERR_TRACK_NOTES', songId, revisionId, image, partId
+  }).catch(() => null);
+  return extractChordsFromTrack(trackData);
 }
 
-// ── Tab → Chord conversion ─────────────────────────────────────
-const STRING_OPEN_MIDI = [40, 45, 50, 55, 59, 64]; // E2 A2 D3 G3 B3 E4
-const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const CHORD_TEMPLATES = {
-  '':     [0, 4, 7],
-  'm':    [0, 3, 7],
-  '7':    [0, 4, 7, 10],
-  'maj7': [0, 4, 7, 11],
-  'm7':   [0, 3, 7, 10],
-  'sus2': [0, 2, 7],
-  'sus4': [0, 5, 7],
-  'dim':  [0, 3, 6],
-};
-
-function notesToChordName(notes) {
-  if (!notes?.length) return null;
-  const pcs = [...new Set(notes.map(n => (STRING_OPEN_MIDI[6 - n.string] + n.fret) % 12))];
-  if (pcs.length < 2) return null;
-
-  let best = null, bestScore = 0;
-  for (let root = 0; root < 12; root++) {
-    if (!pcs.includes(root)) continue;
-    const intervals = pcs.map(p => (p - root + 12) % 12).sort((a, b) => a - b);
-    for (const [quality, tmpl] of Object.entries(CHORD_TEMPLATES)) {
-      const matched = tmpl.filter(t => intervals.includes(t)).length;
-      const score = matched / tmpl.length;
-      if (score >= 0.66 && score > bestScore) {
-        bestScore = score;
-        best = NOTE_NAMES[root] + quality;
+// ── Track → Chord per measure ──────────────────────────────────
+// Songsterr embeds chord name directly at the beat: beat.chord.text.
+// A measure may have no chord marking (continuation) — carry over previous.
+function extractChordsFromTrack(track) {
+  if (!track?.measures) return null;
+  let last = null;
+  return track.measures.map(measure => {
+    for (const voice of measure.voices || []) {
+      for (const beat of voice.beats || []) {
+        if (beat.chord?.text) { last = beat.chord.text; return last; }
       }
     }
-  }
-  return best;
+    return last;
+  });
 }
 
-function extractChordsFromTab(tabData) {
-  if (!tabData?.tracks) return null;
-  const track = tabData.tracks.find(t =>
-    t.name?.toLowerCase().includes('guitar') || t.instrument?.id < 30
-  ) || tabData.tracks[0];
-  if (!track?.measures) return null;
-
-  return track.measures.map(measure => {
-    const notes = (measure.beats || []).flatMap(b =>
-      (b.notes || [])
-        .filter(n => n.fret !== undefined && n.string !== undefined)
-        .map(n => ({ string: n.string, fret: n.fret }))
+// Prefer rhythm guitar (most-viewed guitar track) — has chord markings.
+function pickBestGuitarTrack(tracks) {
+  const guitars = tracks
+    .map((t, i) => ({ ...t, idx: i }))
+    .filter(t => !t.isVocalTrack && !t.isEmpty)
+    .filter(t =>
+      (t.instrumentId >= 24 && t.instrumentId <= 31) ||
+      (t.name || '').toLowerCase().includes('guitar')
     );
-    return notesToChordName(notes);
-  });
+  if (!guitars.length) return 0;
+  guitars.sort((a, b) => (b.views || 0) - (a.views || 0));
+  return guitars[0].idx;
 }
 
 // ── YouTube title parser ───────────────────────────────────────
@@ -169,7 +149,12 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
 
     const [videoPointsRaw, chords] = await Promise.all([
       getVideoPoints(foundSong.id, foundSong.revisionId),
-      getTabChords(foundSong.id, foundSong.revisionId, foundSong.tracks, foundSong.slug)
+      getTrackChords({
+        songId: foundSong.id,
+        revisionId: foundSong.revisionId,
+        image: foundSong.image,
+        tracks: foundSong.tracks
+      })
     ]);
 
     // API returns array of video entries; each has a .points array of timestamps

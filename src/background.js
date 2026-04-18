@@ -1,18 +1,17 @@
 const SONGSTERR = 'https://www.songsterr.com';
+const CDN_WITH_IMG = ['dqsljvtekg760', 'd34shlm8p2ums2', 'd3cqchs6g3b5ew'];
+const CDN_NO_IMG   = ['d3rrfvx08uyjp1', 'dodkcbujl0ebx', 'dj1usja78sinh'];
+const CDN_STAGE    = 'd3d3l6a6rcgkaf';
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'SONGSTERR_SEARCH') {
-    handleSearch(msg.query).then(sendResponse).catch(e => sendResponse({ error: e.message }));
-    return true; // async response
-  }
-  if (msg.type === 'SONGSTERR_VIDEO_POINTS') {
-    handleVideoPoints(msg.songId, msg.revisionId).then(sendResponse).catch(e => sendResponse({ error: e.message }));
-    return true;
-  }
-  if (msg.type === 'SONGSTERR_TAB_CHORDS') {
-    handleTabChords(msg.songId, msg.revisionId, msg.tracks, msg.slug).then(sendResponse).catch(e => sendResponse({ error: e.message }));
-    return true;
-  }
+  const dispatch = {
+    SONGSTERR_SEARCH:       () => handleSearch(msg.query),
+    SONGSTERR_VIDEO_POINTS: () => handleVideoPoints(msg.songId, msg.revisionId),
+    SONGSTERR_TRACK_NOTES:  () => handleTrackNotes(msg),
+  }[msg.type];
+  if (!dispatch) return;
+  dispatch().then(sendResponse).catch(e => sendResponse({ error: e.message }));
+  return true;
 });
 
 async function handleSearch(query) {
@@ -36,6 +35,7 @@ async function handleSearch(query) {
     title: meta.title || slug,
     artist: meta.artist || '',
     revisionId: meta.revisionId,
+    image: meta.image || null,
     tracks: meta.tracks || [],
     youtubeVideos: (meta.videos || []).map(v => v.videoId)
   };
@@ -48,24 +48,27 @@ async function handleVideoPoints(songId, revisionId) {
   return await res.json();
 }
 
-async function handleTabChords(songId, revisionId, tracks, slug) {
-  // Try __NEXT_DATA__ from Songsterr page HTML
-  if (slug) {
-    try {
-      const res = await fetch(`${SONGSTERR}/a/wsa/${slug}`);
-      if (res.ok) {
-        const html = await res.text();
-        const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]+?)<\/script>/);
-        if (m) {
-          const nextData = JSON.parse(m[1]);
-          const pp = nextData?.props?.pageProps;
-          console.log('[ChordShade] __NEXT_DATA__ pageProps keys:', pp && Object.keys(pp).slice(0, 20));
-          return { data: pp, source: 'nextdata' };
-        } else {
-          console.log('[ChordShade] no __NEXT_DATA__ found in page');
-        }
-      }
-    } catch (e) { console.log('[ChordShade] page fetch error:', e.message); }
+function trackNotesUrl({ songId, revisionId, image, partId, attempt = 0 }) {
+  if (image && image.endsWith('-stage')) {
+    return `https://${CDN_STAGE}.cloudfront.net/${songId}/${revisionId}/${image}/${partId}.json`;
   }
-  return null;
+  if (image) {
+    const host = CDN_WITH_IMG[attempt % CDN_WITH_IMG.length];
+    return `https://${host}.cloudfront.net/${songId}/${revisionId}/${image}/${partId}.json`;
+  }
+  const host = CDN_NO_IMG[attempt % CDN_NO_IMG.length];
+  return `https://${host}.cloudfront.net/part/${revisionId}/${partId}`;
+}
+
+async function handleTrackNotes({ songId, revisionId, image, partId }) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const url = trackNotesUrl({ songId, revisionId, image, partId, attempt });
+    try {
+      const res = await fetch(url);
+      if (res.ok) return await res.json();
+      lastErr = new Error(`CDN ${res.status} at ${url}`);
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('Track notes fetch failed');
 }
