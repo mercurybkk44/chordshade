@@ -5,8 +5,8 @@
   "description": "ChordShade: Auto-detect chords from YouTube and sync overlay for guitarists.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "host_permissions": [
-    "https://www.songsterr.com/*",
-    "https://cdn.songsterr.com/*"
+    "https://*.songsterr.com/*",
+    "https://*.cloudfront.net/*"
   ],
   "background": {
     "service_worker": "src/background.js"
