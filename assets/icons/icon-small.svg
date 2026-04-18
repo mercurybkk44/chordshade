@@ -1,0 +1,25 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#BFF37A"/>
+      <stop offset="1" stop-color="#3FAE55"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bold leaf silhouette, no bg, for crisp 16px rendering -->
+  <g transform="translate(64 64) rotate(-22)">
+    <path d="M 0 -58
+             C 30 -52 38 -20 32 14
+             C 26 44 14 56 0 58
+             C -14 56 -26 44 -32 14
+             C -38 -20 -30 -52 0 -58 Z"
+          fill="url(#leaf)" stroke="#0F3B2D" stroke-width="7" stroke-linejoin="round"/>
+
+    <!-- Single vein (music string) -->
+    <path d="M 0 -46 L 0 46"
+          stroke="#0F3B2D" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Solid note head -->
+    <circle cx="-2" cy="10" r="10" fill="#0F3B2D"/>
+  </g>
+</svg>
