@@ -28,11 +28,16 @@ async function getVideoPoints(songId, revisionId) {
 }
 
 async function getTrackChords({ songId, revisionId, image, tracks }) {
-  const partId = pickBestGuitarTrack(tracks);
-  const trackData = await bgMessage({
-    type: 'SONGSTERR_TRACK_NOTES', songId, revisionId, image, partId
-  }).catch(() => null);
-  return extractChordsFromTrack(trackData);
+  // Try ranked candidates; the top track may be a lead/solo with no chord markings.
+  const candidates = rankGuitarTracks(tracks);
+  for (const partId of candidates) {
+    const trackData = await bgMessage({
+      type: 'SONGSTERR_TRACK_NOTES', songId, revisionId, image, partId
+    }).catch(() => null);
+    const chords = extractChordsFromTrack(trackData);
+    if (chords && chords.some(Boolean)) return chords;
+  }
+  return null;
 }
 
 // ── Track → Chord per measure ──────────────────────────────────
@@ -51,8 +56,10 @@ function extractChordsFromTrack(track) {
   });
 }
 
-// Prefer rhythm guitar (most-viewed guitar track) — has chord markings.
-function pickBestGuitarTrack(tracks) {
+// Rank guitar tracks by views — Songsterr users vote the canonical track up.
+// Returns an array of track indices to try in order; getTrackChords falls
+// through to the next candidate if the first has no chord markings.
+function rankGuitarTracks(tracks) {
   const guitars = tracks
     .map((t, i) => ({ ...t, idx: i }))
     .filter(t => !t.isVocalTrack && !t.isEmpty)
@@ -60,9 +67,9 @@ function pickBestGuitarTrack(tracks) {
       (t.instrumentId >= 24 && t.instrumentId <= 31) ||
       (t.name || '').toLowerCase().includes('guitar')
     );
-  if (!guitars.length) return 0;
+  if (!guitars.length) return tracks.map((_, i) => i);
   guitars.sort((a, b) => (b.views || 0) - (a.views || 0));
-  return guitars[0].idx;
+  return guitars.map(t => t.idx);
 }
 
 // ── YouTube title parser ───────────────────────────────────────
@@ -82,7 +89,10 @@ async function getYouTubeTitle() {
   if (!tab?.url?.includes('youtube.com/watch')) return null;
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    func: () => document.title.replace(' - YouTube', '').trim()
+    func: () => document.title
+      .replace(/^\(\d+\)\s*/, '')    // strip YouTube notification counter
+      .replace(/\s*-\s*YouTube\s*$/, '')
+      .trim()
   });
   return results?.[0]?.result || null;
 }
@@ -157,11 +167,15 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
       })
     ]);
 
-    // API returns array of video entries; each has a .points array of timestamps
+    // API returns array of video entries; each has a .points array of timestamps.
+    // If this YouTube video isn't in the list, timing will be approximate.
     let videoPoints = [];
+    let timingMatched = false;
     if (Array.isArray(videoPointsRaw)) {
-      const entry = videoPointsRaw.find(v => v.videoId === ytVideoId) || videoPointsRaw[0];
+      const matched = videoPointsRaw.find(v => v.videoId === ytVideoId);
+      const entry = matched || videoPointsRaw[0];
       videoPoints = entry?.points || [];
+      timingMatched = Boolean(matched);
     }
 
     await chrome.storage.local.set({
@@ -180,7 +194,9 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
 
     document.getElementById('syncBtn').style.display = 'none';
     document.getElementById('stopBtn').style.display = 'block';
-    setStatus(`✓ Sync active — ${videoPoints.length} measures`, 'found');
+    const chordNote = chords?.some(Boolean) ? '' : ' (no chord data — showing bars)';
+    const timingNote = timingMatched ? '' : ' • timing approx';
+    setStatus(`✓ Sync active — ${videoPoints.length} measures${timingNote}${chordNote}`, 'found');
   } catch (e) {
     setStatus(`Error: ${e.message}`, 'error');
   }

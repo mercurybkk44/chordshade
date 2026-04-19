@@ -15,28 +15,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 async function handleSearch(query) {
-  const res = await fetch(`${SONGSTERR}/?pattern=${encodeURIComponent(query)}`);
+  // JSON search API — returns relevance-ranked results (no featured-link noise).
+  const res = await fetch(`${SONGSTERR}/api/songs?pattern=${encodeURIComponent(query)}&size=10`);
   if (!res.ok) throw new Error(`Songsterr returned ${res.status}`);
-  const html = await res.text();
+  const results = await res.json();
+  if (!Array.isArray(results) || !results.length) throw new Error('No songs found on Songsterr');
 
-  const slugMatches = [...html.matchAll(/href="\/a\/wsa\/([^"]+?-s(\d+))(?:t\d+)?"/g)];
-  if (!slugMatches.length) throw new Error('No songs found on Songsterr');
+  // Prefer a non-junk hit with chord data; fall back to the first playable result.
+  const pick = results.find(s => s.hasChords && s.hasPlayer && !s.isJunk)
+            || results.find(s => s.hasPlayer && !s.isJunk)
+            || results[0];
 
-  const slug = slugMatches[0][1];
-  const songId = parseInt(slugMatches[0][2]);
-
-  const metaRes = await fetch(`${SONGSTERR}/api/meta/${songId}`);
-  if (!metaRes.ok) throw new Error(`Metadata failed for song ${songId}`);
+  const metaRes = await fetch(`${SONGSTERR}/api/meta/${pick.songId}`);
+  if (!metaRes.ok) throw new Error(`Metadata failed for song ${pick.songId}`);
   const meta = await metaRes.json();
 
   return {
-    id: songId,
-    slug,
-    title: meta.title || slug,
-    artist: meta.artist || '',
+    id: pick.songId,
+    title: meta.title || pick.title,
+    artist: meta.artist || pick.artist,
     revisionId: meta.revisionId,
     image: meta.image || null,
     tracks: meta.tracks || [],
+    hasChords: meta.hasChords ?? pick.hasChords ?? false,
     youtubeVideos: (meta.videos || []).map(v => v.videoId)
   };
 }
