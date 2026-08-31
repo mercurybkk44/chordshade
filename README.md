@@ -38,8 +38,8 @@ However, if you intend to:
 
 Please **respect the original creator** by giving proper credit with a link to this repository or a mention like:
 
-> Originally created by [Phutthisarn M. 🌍](https://github.com/mars-earth)
+> Originally created by [Phutthisarn M. 🌍](https://github.com/mercurybkk44)
 
-If you're unsure whether your intended use is appropriate, feel free to [open an issue](https://github.com/mars-earth/chordshade/issues) or contact me directly.
+If you're unsure whether your intended use is appropriate, feel free to [open an issue](https://github.com/mercurybkk44/chordshade/issues) or contact me directly.
 
 🙏 Thank you for supporting indie developers and open-source values.
